@@ -5,58 +5,519 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Burbujas</title>
 <style>
-:root{--bg1:#bfe9ff;--bg2:#ffe3f1;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg1:#1d3b5c;--bg2:#4a2a4a}}
+:root{--bg1:#bfe9ff;--bg2:#ffe3f1;--dot:rgba(0,0,0,.25);--dotOn:rgba(0,0,0,.7);--card:#fff;--ink:#222;--line:rgba(0,0,0,.18);box-sizing:border-box}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg1:#1d3b5c;--bg2:#4a2a4a;--dot:rgba(255,255,255,.3);--dotOn:rgba(255,255,255,.9);--card:#2b2b36;--ink:#f1f1f1;--line:rgba(255,255,255,.25)}}
 html,body{height:100%;margin:0}
-body{background:linear-gradient(160deg,var(--bg1),var(--bg2));font-family:"Trebuchet MS",system-ui,sans-serif;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none}
-#grid{height:100%;display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(3,1fr);gap:14px;padding:14px;box-sizing:border-box}
-button{border:none;border-radius:32px;font-size:min(22vw,110px);cursor:pointer;box-shadow:0 8px 0 rgba(0,0,0,.18),inset 0 6px 14px rgba(255,255,255,.55);transition:transform .08s;-webkit-tap-highlight-color:transparent}
-button:active,button.pop{transform:scale(.88) translateY(6px);box-shadow:0 2px 0 rgba(0,0,0,.18)}
-.fx{position:fixed;pointer-events:none;font-size:40px;animation:up 1s ease-out forwards}
+body{background:linear-gradient(160deg,var(--bg1),var(--bg2));font-family:"Trebuchet MS",system-ui,sans-serif;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);color:var(--ink)}
+#pages{flex:1;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+#pages::-webkit-scrollbar{display:none}
+#pages.locked{overflow-x:hidden}
+.page{flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;display:grid;gap:14px;padding:14px;box-sizing:border-box}
+.page button{border:none;border-radius:32px;font-size:min(22vw,110px);cursor:pointer;background-size:cover;background-position:center;box-shadow:0 8px 0 rgba(0,0,0,.18),inset 0 6px 14px rgba(255,255,255,.55);transition:transform .08s;-webkit-tap-highlight-color:transparent;padding:0;color:#222}
+.page button:active,.page button.pop{transform:scale(.88) translateY(6px);box-shadow:0 2px 0 rgba(0,0,0,.18)}
+body.editing .page button{outline:4px dashed rgba(0,0,0,.45);outline-offset:-8px}
+.plus{opacity:.45}
+#tools{display:none;flex:none;gap:8px;padding:6px 12px;overflow-x:auto;scrollbar-width:none}
+body.editing #tools{display:flex}
+#tools button,.btn{flex:none;border:none;border-radius:16px;padding:10px 14px;font-size:15px;background:var(--card);color:var(--ink);box-shadow:0 2px 0 var(--line);cursor:pointer;font-family:inherit}
+#tools .ok,.btn.ok{background:#4cc27a;color:#fff}
+.btn.bad{background:#ff6b6b;color:#fff}
+.btn.sel{outline:3px solid #4cc27a}
+#bar{height:64px;flex:none;display:flex;align-items:center;justify-content:center;position:relative;padding-bottom:env(safe-area-inset-bottom,0px)}
+#dots{display:flex;gap:12px}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--dot);transition:all .2s}
+.dot.on{background:var(--dotOn);transform:scale(1.35)}
+.round{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;border:none;background:rgba(255,255,255,.55);font-size:22px;cursor:pointer;-webkit-tap-highlight-color:transparent;overflow:hidden}
+#lock{right:14px}#edit{left:14px}
+#lock.on{background:rgba(255,120,120,.75)}
+.round i{position:absolute;left:0;bottom:0;width:100%;height:0;background:rgba(0,0,0,.25)}
+body.editing #edit,body.isLocked #edit{display:none}
+.fx{position:fixed;pointer-events:none;font-size:40px;animation:up 1s ease-out forwards;z-index:5}
 @keyframes up{to{transform:translateY(-160px) scale(1.6);opacity:0}}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:20;padding:12px;box-sizing:border-box}
+#modal.show{display:flex}
+.card{background:var(--card);color:var(--ink);border-radius:24px;padding:18px;width:min(94vw,440px);max-height:92%;overflow:auto;box-sizing:border-box;-webkit-user-select:text;user-select:text}
+.card h3{margin:0 0 10px}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;align-items:center}
+.card label{display:block;font-size:13px;opacity:.7;margin-top:12px}
+.prev{width:110px;height:110px;border-radius:28px;display:flex;align-items:center;justify-content:center;font-size:60px;background-size:cover;background-position:center;margin:6px auto;box-shadow:0 5px 0 rgba(0,0,0,.18)}
+.emo{font-size:26px;padding:4px 6px;border:none;background:none;cursor:pointer}
+.sw{width:34px;height:34px;border-radius:50%;border:3px solid transparent;cursor:pointer;padding:0}
+.sw.on{border-color:var(--ink)}
+input[type=text]{font-size:22px;width:70px;padding:6px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink)}
+input[type=file]{display:none}
+#rec.recording{background:#ff4d4d;color:#fff}
+.small{font-size:13px;opacity:.75}
+#cmodal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:30;padding:12px;box-sizing:border-box}
+#cmodal.show{display:flex}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:10px 16px;border-radius:16px;font-size:15px;z-index:40;display:none;max-width:90vw;text-align:center}
 </style>
 </head>
 <body>
-<div id="grid"></div>
+<div id="pages"></div>
+<div id="tools">
+  <button id="tAdd">➕ Pantalla</button>
+  <button id="tDel">🗑️ Pantalla</button>
+  <button id="tL">◀ Mover</button>
+  <button id="tR">Mover ▶</button>
+  <button id="tN">🔢 Botones: 6</button>
+  <button id="tBk">💾 Respaldo</button>
+  <button id="tOk" class="ok">✅ Listo</button>
+</div>
+<div id="bar">
+  <button id="edit" class="round" aria-label="Editar (mantener apretado)">✏️<i></i></button>
+  <div id="dots"></div>
+  <button id="lock" class="round" aria-label="Bloquear pantalla">🔓<i></i></button>
+</div>
+<div id="modal"><div class="card" id="card"></div></div>
+<div id="cmodal"><div class="card" id="ccard"></div></div>
+<div id="toast"></div>
+
 <script>
+/* ---------- Almacenamiento (IndexedDB con respaldo en memoria) ---------- */
+const mem={kv:new Map(),audio:new Map()};
+let dbp=null;
+function openDB(){
+  if(dbp)return dbp;
+  dbp=new Promise((res,rej)=>{
+    try{
+      const r=indexedDB.open("burbujas",1);
+      r.onupgradeneeded=()=>{r.result.createObjectStore("kv");r.result.createObjectStore("audio")};
+      r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);
+    }catch(e){rej(e)}
+  });
+  return dbp;
+}
+async function idb(store,mode,fn){
+  try{
+    const d=await openDB();
+    return await new Promise((res,rej)=>{
+      const t=d.transaction(store,mode),rq=fn(t.objectStore(store));
+      t.oncomplete=()=>res(rq&&rq.result);t.onerror=()=>rej(t.error);
+    });
+  }catch(e){
+    if(mode==="readonly")return undefined;
+    throw e;
+  }
+}
+async function dbGet(s,k){let v;try{v=await idb(s,"readonly",o=>o.get(k))}catch(e){}return v!==undefined?v:mem[s].get(k)}
+async function dbSet(s,k,v){mem[s].set(k,v);try{await idb(s,"readwrite",o=>o.put(v,k))}catch(e){}}
+async function dbDel(s,k){mem[s].delete(k);try{await idb(s,"readwrite",o=>o.delete(k))}catch(e){}}
+
+/* ---------- Audio: contexto y sonidos sintetizados ---------- */
 let ctx;
 function ac(){if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==="suspended")ctx.resume();return ctx}
-function tone(f0,f1,dur,type="sine",vol=.4,delay=0){
+function tone(f0,f1,dur,type="sine",vol=.4,delay=0,lp=0){
   const c=ac(),t=c.currentTime+delay,o=c.createOscillator(),g=c.createGain();
   o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+dur);
   g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);
-  o.connect(g).connect(c.destination);o.start(t);o.stop(t+dur);
+  let n=o;
+  if(lp){const f=c.createBiquadFilter();f.type="lowpass";f.frequency.value=lp;o.connect(f);n=f}
+  n.connect(g).connect(c.destination);o.start(t);o.stop(t+dur);
 }
-function noise(dur,vol=.3,freq=1200){
+function noise(dur,vol=.3,freq=1200,delay=0){
   const c=ac(),n=c.sampleRate*dur,b=c.createBuffer(1,n,c.sampleRate),d=b.getChannelData(0);
   for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);
   const s=c.createBufferSource(),g=c.createGain(),f=c.createBiquadFilter();
   s.buffer=b;f.type="bandpass";f.frequency.value=freq;g.gain.value=vol;
-  s.connect(f).connect(g).connect(c.destination);s.start();
+  s.connect(f).connect(g).connect(c.destination);s.start(c.currentTime+delay);
 }
-const items=[
- {e:"🫧",c:"#9fe0ff",s:()=>tone(400+Math.random()*300,1400,.18,"sine",.45)},
- {e:"🔵",c:"#7fb4ff",s:()=>{tone(220+Math.random()*80,900,.3,"sine",.45);tone(500,1600,.12,"sine",.25,.08)}},
- {e:"🔔",c:"#ffe27a",s:()=>{tone(880,880,1.2,"sine",.35);tone(1760,1760,.8,"sine",.15)}},
- {e:"🥁",c:"#ffb38a",s:()=>{tone(180,50,.25,"sine",.7);noise(.08,.15,2000)}},
- {e:"⭐",c:"#d6b3ff",s:()=>[523,659,784,1047].forEach((f,i)=>tone(f,f,.35,"triangle",.3,i*.09))},
- {e:"🐱",c:"#ffb3d1",s:()=>{tone(700,1000,.15,"triangle",.35);tone(1000,500,.35,"triangle",.35,.15)}}
-];
-const grid=document.getElementById("grid");
-items.forEach(it=>{
-  const b=document.createElement("button");
-  b.textContent=it.e;b.style.background=it.c;
-  const go=ev=>{
-    ev.preventDefault();it.s();
-    b.classList.add("pop");setTimeout(()=>b.classList.remove("pop"),120);
-    const r=b.getBoundingClientRect(),x=document.createElement("div");
-    x.className="fx";x.textContent=it.e;
-    x.style.left=(r.left+Math.random()*r.width*.8)+"px";x.style.top=(r.top+r.height/2)+"px";
-    document.body.appendChild(x);setTimeout(()=>x.remove(),1000);
-  };
-  b.addEventListener("pointerdown",go);
-  grid.appendChild(b);
+const SYNTH={
+  burbuja:{e:"🫧",n:"Burbuja",c:"#9fe0ff",s:()=>tone(400+Math.random()*300,1400,.18,"sine",.45)},
+  burbuja2:{e:"🔵",n:"Burbuja grave",c:"#7fb4ff",s:()=>{tone(220+Math.random()*80,900,.3,"sine",.45);tone(500,1600,.12,"sine",.25,.08)}},
+  campana:{e:"🔔",n:"Campana",c:"#ffe27a",s:()=>{tone(880,880,1.2,"sine",.35);tone(1760,1760,.8,"sine",.15)}},
+  tambor:{e:"🥁",n:"Tambor",c:"#ffb38a",s:()=>{tone(180,50,.25,"sine",.7);noise(.08,.15,2000)}},
+  estrella:{e:"⭐",n:"Estrella",c:"#d6b3ff",s:()=>[523,659,784,1047].forEach((f,i)=>tone(f,f,.35,"triangle",.3,i*.09))},
+  gato:{e:"🐱",n:"Gato",c:"#ffb3d1",s:()=>{tone(700,1000,.15,"triangle",.35);tone(1000,500,.35,"triangle",.35,.15)}},
+  vaca:{e:"🐮",n:"Vaca",c:"#c9e8a8",s:()=>{tone(150,100,.8,"sawtooth",.35,0,500);tone(160,110,.6,"sawtooth",.15,.05,900)}},
+  cerdo:{e:"🐷",n:"Cerdo",c:"#ffc2cf",s:()=>{tone(320,160,.12,"sawtooth",.3,0,1500);tone(300,150,.14,"sawtooth",.3,.16,1500)}},
+  pico:{e:"⛏️",n:"Pico",c:"#d9d2c5",s:()=>{tone(1400,500,.06,"square",.25);noise(.12,.35,3000);tone(1100,400,.06,"square",.2,.2);noise(.1,.3,2600,.2)}},
+  tnt:{e:"🧨",n:"Explosión",c:"#ff9c8a",s:()=>{noise(.15,.15,6000);tone(900,200,.7,"sawtooth",.1,0,2000);noise(1.1,.9,200,.7);tone(110,25,1,"sine",.9,.7)}},
+  diamante:{e:"💎",n:"Diamante",c:"#a8f0ee",s:()=>[1568,2093,2637,3136].forEach((f,i)=>tone(f,f,.3,"sine",.22,i*.07))},
+  volcan:{e:"🌋",n:"Volcán",c:"#ffb066",s:()=>{for(let i=0;i<6;i++)tone(90+Math.random()*120,200+Math.random()*250,.18,"sine",.4,i*.11,700);noise(.7,.18,400)}}
+};
+
+/* ---------- Configuración ---------- */
+const COLORS=["#9fe0ff","#7fb4ff","#ffe27a","#ffb38a","#d6b3ff","#ffb3d1","#c9e8a8","#a8f0ee","#ffffff"];
+const EMOJIS=["🫧","🔔","🥁","⭐","🐱","🐶","🐮","🐷","🐸","🐦","🚗","🚂","🌈","☀️","🌙","🎵","🎹","🎸","🎤","❤️","😀","👋","🍎","💧"];
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function newButton(i){return{emoji:"",img:"",color:COLORS[i%COLORS.length],audio:"",synth:""}}
+function newScreen(){return{n:6,buttons:Array.from({length:6},(_,i)=>newButton(i))}}
+function synthScreen(keys){
+  const s=newScreen();
+  keys.forEach((k,i)=>{s.buttons[i]={emoji:SYNTH[k].e,img:"",color:SYNTH[k].c,audio:"",synth:k}});
+  return s;
+}
+const SCREEN1=["burbuja","burbuja2","campana","tambor","estrella","gato"];
+const SCREEN2=["vaca","cerdo","pico","tnt","diamante","volcan"];
+function defaultCfg(){return{v:2,screens:[synthScreen(SCREEN1),synthScreen(SCREEN2)]}}
+let cfg=defaultCfg();
+const save=()=>dbSet("kv","cfg",cfg);
+
+/* Migración: configuraciones guardadas con la versión anterior (sin sonidos de la app) */
+const OLD_EMOJI_SYNTH={"🫧":"burbuja","🔔":"campana","🥁":"tambor","⭐":"estrella","🐱":"gato"};
+function migrate(c){
+  if(c.v>=2)return c;
+  c.screens.forEach(s=>s.buttons.forEach(b=>{
+    if(b.synth===undefined)b.synth="";
+    if(!b.audio&&!b.img&&!b.synth&&OLD_EMOJI_SYNTH[b.emoji])b.synth=OLD_EMOJI_SYNTH[b.emoji];
+  }));
+  if(c.screens.length===1)c.screens.push(synthScreen(SCREEN2));
+  c.v=2;return c;
+}
+
+/* ---------- Audio propio (grabado/subido) ---------- */
+const cache=new Map();
+async function loadAudio(id){
+  if(!id||cache.has(id))return cache.get(id);
+  const blob=await dbGet("audio",id);
+  if(!blob){cache.set(id,null);return null}
+  let entry;
+  try{entry={buf:await ac().decodeAudioData(await blob.arrayBuffer())}}
+  catch(e){entry={url:URL.createObjectURL(blob)}}
+  cache.set(id,entry);return entry;
+}
+function playAudio(id){
+  const e=cache.get(id);
+  if(!e){loadAudio(id).then(x=>x&&playAudio(id));return}
+  if(e.buf){const c=ac(),s=c.createBufferSource();s.buffer=e.buf;s.connect(c.destination);s.start()}
+  else if(e.url){new Audio(e.url).play().catch(()=>{})}
+}
+function playButton(bt){
+  if(bt.audio)playAudio(bt.audio);
+  else if(bt.synth&&SYNTH[bt.synth])SYNTH[bt.synth].s();
+}
+function dropAudio(id){
+  if(!id)return;
+  const e=cache.get(id);if(e&&e.url)URL.revokeObjectURL(e.url);
+  cache.delete(id);dbDel("audio",id);
+}
+
+/* ---------- Render ---------- */
+const pagesEl=document.getElementById("pages"),dotsEl=document.getElementById("dots");
+let editing=false,locked=false;
+function layout(n){return n===2?[1,2]:n===4?[2,2]:[2,3]}
+function curIdx(){return Math.max(0,Math.min(cfg.screens.length-1,Math.round(pagesEl.scrollLeft/pagesEl.clientWidth)))}
+function render(goTo){
+  const keep=goTo!==undefined?goTo:curIdx();
+  pagesEl.innerHTML="";dotsEl.innerHTML="";
+  cfg.screens.forEach((sc,pi)=>{
+    const p=document.createElement("div");p.className="page";
+    const [cols,rows]=layout(sc.n);
+    p.style.gridTemplateColumns="repeat("+cols+",1fr)";p.style.gridTemplateRows="repeat("+rows+",1fr)";
+    sc.buttons.slice(0,sc.n).forEach((bt,bi)=>{
+      const b=document.createElement("button");
+      b.style.backgroundColor=bt.color;
+      if(bt.img){b.style.backgroundImage="url("+bt.img+")"}
+      const empty=!bt.img&&!bt.emoji;
+      if(!bt.img)b.textContent=bt.emoji||(editing?"＋":"");
+      if(empty)b.classList.add("plus");
+      b.addEventListener("pointerdown",()=>{
+        if(editing){openEditor(pi,bi);return}
+        ac();playButton(bt);
+        b.classList.add("pop");setTimeout(()=>b.classList.remove("pop"),120);
+        const r=b.getBoundingClientRect(),x=document.createElement("div");
+        x.className="fx";x.textContent=bt.emoji||"✨";
+        x.style.left=(r.left+Math.random()*r.width*.8)+"px";x.style.top=(r.top+r.height/2)+"px";
+        document.body.appendChild(x);setTimeout(()=>x.remove(),1000);
+      });
+      p.appendChild(b);
+    });
+    pagesEl.appendChild(p);
+    const d=document.createElement("div");d.className="dot";dotsEl.appendChild(d);
+    sc.buttons.forEach(bt=>loadAudio(bt.audio));
+  });
+  dotsEl.style.display=cfg.screens.length>1?"flex":"none";
+  requestAnimationFrame(()=>{pagesEl.scrollLeft=keep*pagesEl.clientWidth;updateDots()});
+}
+function updateDots(){
+  const i=curIdx();
+  [...dotsEl.children].forEach((d,k)=>d.classList.toggle("on",k===i));
+  document.getElementById("tN").textContent="🔢 Botones: "+(cfg.screens[i]||{n:6}).n;
+}
+pagesEl.addEventListener("scroll",updateDots,{passive:true});
+dotsEl.addEventListener("click",e=>{
+  if(locked)return;
+  const k=[...dotsEl.children].indexOf(e.target);
+  if(k>=0)pagesEl.scrollTo({left:k*pagesEl.clientWidth,behavior:"smooth"});
 });
+
+/* ---------- Mantener apretado ---------- */
+function makeHold(btn,ms,guard,cb){
+  const prog=btn.querySelector("i");let t;
+  const end=()=>{clearTimeout(t);prog.style.transition="none";prog.style.height="0"};
+  btn.addEventListener("pointerdown",()=>{
+    if(guard&&!guard())return;
+    prog.style.transition="height "+ms+"ms linear";prog.style.height="100%";
+    t=setTimeout(()=>{end();cb()},ms);
+  });
+  ["pointerup","pointerleave","pointercancel"].forEach(e=>btn.addEventListener(e,end));
+}
+const lockBtn=document.getElementById("lock");
+function setLock(v){
+  locked=v;pagesEl.classList.toggle("locked",v);lockBtn.classList.toggle("on",v);
+  document.body.classList.toggle("isLocked",v);
+  lockBtn.firstChild.nodeValue=v?"🔒":"🔓";dotsEl.style.opacity=v?.25:1;
+  try{v?document.body.requestFullscreen?.():document.fullscreenElement&&document.exitFullscreen?.()}catch(e){}
+}
+makeHold(lockBtn,1500,()=>{if(!locked){setLock(true);return false}return true},()=>setLock(false));
+makeHold(document.getElementById("edit"),1200,null,()=>setEditing(true));
+function setEditing(v){editing=v;document.body.classList.toggle("editing",v);render()}
+
+/* ---------- Confirmaciones y avisos propios (no dependen de ventanas del navegador) ---------- */
+function askConfirm(msg,okText){
+  return new Promise(res=>{
+    const cm=document.getElementById("cmodal"),cc=document.getElementById("ccard");
+    cc.innerHTML='<h3></h3><div class="row" style="justify-content:space-between"><button class="btn" id="cNo">Cancelar</button><button class="btn bad" id="cYes"></button></div>';
+    cc.querySelector("h3").textContent=msg;cc.querySelector("#cYes").textContent=okText||"Aceptar";
+    cm.classList.add("show");
+    const done=v=>{cm.classList.remove("show");cc.innerHTML="";res(v)};
+    cc.querySelector("#cNo").onclick=()=>done(false);
+    cc.querySelector("#cYes").onclick=()=>done(true);
+  });
+}
+let toastT;
+function toast(m){
+  const t=document.getElementById("toast");t.textContent=m;t.style.display="block";
+  clearTimeout(toastT);toastT=setTimeout(()=>t.style.display="none",2500);
+}
+
+/* ---------- Barra de edición ---------- */
+document.getElementById("tOk").onclick=()=>setEditing(false);
+document.getElementById("tAdd").onclick=()=>{cfg.screens.push(newScreen());save();render(cfg.screens.length-1)};
+document.getElementById("tDel").onclick=async()=>{
+  if(cfg.screens.length<2){toast("Tiene que quedar al menos una pantalla.");return}
+  const i=curIdx();
+  if(!await askConfirm("¿Borrar esta pantalla con todos sus botones y sonidos?","Borrar"))return;
+  cfg.screens[i].buttons.forEach(b=>dropAudio(b.audio));
+  cfg.screens.splice(i,1);save();render(Math.min(i,cfg.screens.length-1));
+};
+function move(d){
+  const i=curIdx(),j=i+d;if(j<0||j>=cfg.screens.length)return;
+  [cfg.screens[i],cfg.screens[j]]=[cfg.screens[j],cfg.screens[i]];save();render(j);
+}
+document.getElementById("tL").onclick=()=>move(-1);
+document.getElementById("tR").onclick=()=>move(1);
+document.getElementById("tN").onclick=()=>{
+  const s=cfg.screens[curIdx()];s.n=s.n===6?4:s.n===4?2:6;save();render();
+};
+
+/* ---------- Modal ---------- */
+const modal=document.getElementById("modal"),card=document.getElementById("card");
+const showModal=h=>{card.innerHTML=h;modal.classList.add("show")};
+const hideModal=()=>{modal.classList.remove("show");card.innerHTML=""};
+const $=s=>card.querySelector(s);
+
+async function fileToImage(file){
+  let src,w,h;
+  try{const bm=await createImageBitmap(file);src=bm;w=bm.width;h=bm.height}
+  catch(e){
+    const du=await blobToDataURL(file);
+    src=await new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=du});
+    w=src.width;h=src.height;
+  }
+  const k=Math.min(1,480/Math.max(w,h));
+  const c=document.createElement("canvas");c.width=Math.max(1,Math.round(w*k));c.height=Math.max(1,Math.round(h*k));
+  c.getContext("2d").drawImage(src,0,0,c.width,c.height);
+  return file.type==="image/png"?c.toDataURL("image/png"):c.toDataURL("image/jpeg",.8);
+}
+
+let rec=null;
+function stopRec(){try{rec&&rec.state!=="inactive"&&rec.stop()}catch(e){}}
+
+function openEditor(pi,bi){
+  const orig=cfg.screens[pi].buttons[bi];
+  const d={emoji:orig.emoji,img:orig.img,color:orig.color,audio:orig.audio,synth:orig.synth||"",newBlob:null,removeAudio:false};
+  let prevUrl=null;
+  showModal(`
+    <h3>Editar botón</h3>
+    <div class="prev" id="pv"></div>
+    <label>Imagen</label>
+    <div class="row">
+      <button class="btn" id="bPhoto">🖼️ Foto o imagen</button>
+      <button class="btn" id="bCam">📷 Cámara</button>
+      <button class="btn" id="bNoImg">Quitar</button>
+    </div>
+    <input type="file" id="fPhoto" accept="image/*"><input type="file" id="fCam" accept="image/*" capture="environment">
+    <div class="small" id="imgInfo"></div>
+    <label>Emoji (si no hay imagen)</label>
+    <div class="row"><input type="text" id="emoIn" maxlength="4">${EMOJIS.map(e=>`<button class="emo" data-e="${e}">${e}</button>`).join("")}</div>
+    <label>Color de fondo</label>
+    <div class="row">${COLORS.map(c=>`<button class="sw" data-c="${c}" style="background:${c}"></button>`).join("")}</div>
+    <label>Sonidos de la app (tocá para elegir y escuchar)</label>
+    <div class="row">${Object.keys(SYNTH).map(k=>`<button class="btn" data-s="${k}">${SYNTH[k].e} ${SYNTH[k].n}</button>`).join("")}</div>
+    <label>Sonido propio</label>
+    <div class="row">
+      <button class="btn" id="rec">🎙️ Grabar</button>
+      <button class="btn" id="bUp">📁 Subir audio</button>
+      <button class="btn" id="bPlay">▶️ Escuchar</button>
+      <button class="btn" id="bNoSnd">Sin sonido</button>
+    </div>
+    <input type="file" id="fUp" accept="audio/*">
+    <div class="small" id="sndInfo"></div>
+    <div class="row" style="margin-top:18px;justify-content:space-between">
+      <button class="btn" id="bCancel">Cancelar</button>
+      <button class="btn bad" id="bClear">Vaciar</button>
+      <button class="btn ok" id="bSave">Guardar</button>
+    </div>`);
+  const pv=$("#pv"),info=$("#sndInfo"),emoIn=$("#emoIn");
+  emoIn.value=d.emoji;
+  const hasOwn=()=>d.newBlob||(d.audio&&!d.removeAudio);
+  const paint=()=>{
+    pv.style.backgroundColor=d.color;
+    pv.style.backgroundImage=d.img?"url("+d.img+")":"none";
+    pv.textContent=d.img?"":(d.emoji||"＋");
+    card.querySelectorAll(".sw").forEach(s=>s.classList.toggle("on",s.dataset.c===d.color));
+    card.querySelectorAll("[data-s]").forEach(s=>s.classList.toggle("sel",!hasOwn()&&s.dataset.s===d.synth));
+    info.textContent=hasOwn()?(d.newBlob?"Sonido propio nuevo, listo para guardar.":"Este botón usa un sonido propio guardado."):(d.synth?"Sonido de la app: "+SYNTH[d.synth].n+".":"Sin sonido.");
+  };
+  paint();
+  $("#bPhoto").onclick=()=>$("#fPhoto").click();
+  $("#bCam").onclick=()=>$("#fCam").click();
+  const imgInfo=$("#imgInfo");
+  const onImg=async e=>{
+    const f=e.target.files[0];e.target.value="";if(!f)return;
+    imgInfo.textContent="Cargando imagen…";
+    try{d.img=await fileToImage(f);paint();imgInfo.textContent="Imagen lista."}
+    catch(x){imgInfo.textContent="No se pudo leer la imagen ("+(f.type||"formato desconocido")+"). Probá con otra o guardala de nuevo como PNG o JPG."}
+  };
+  $("#fPhoto").onchange=onImg;$("#fCam").onchange=onImg;
+  $("#bNoImg").onclick=()=>{d.img="";paint()};
+  emoIn.oninput=()=>{d.emoji=emoIn.value;paint()};
+  card.querySelectorAll(".emo").forEach(b=>b.onclick=()=>{d.emoji=b.dataset.e;emoIn.value=d.emoji;paint()});
+  card.querySelectorAll(".sw").forEach(b=>b.onclick=()=>{d.color=b.dataset.c;paint()});
+  card.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>{
+    ac();d.synth=b.dataset.s;d.newBlob=null;d.removeAudio=true;paint();SYNTH[d.synth].s();
+  });
+
+  const setBlob=b=>{d.newBlob=b;d.removeAudio=false;d.synth="";paint()};
+  $("#bUp").onclick=()=>$("#fUp").click();
+  $("#fUp").onchange=e=>{const f=e.target.files[0];if(f)setBlob(f)};
+  $("#bNoSnd").onclick=()=>{d.newBlob=null;d.removeAudio=true;d.synth="";paint()};
+  $("#bPlay").onclick=async()=>{
+    ac();
+    if(prevUrl){URL.revokeObjectURL(prevUrl);prevUrl=null}
+    if(!hasOwn()){
+      if(d.synth)SYNTH[d.synth].s();else info.textContent="No hay sonido para escuchar.";
+      return;
+    }
+    let blob=d.newBlob||await dbGet("audio",d.audio);
+    if(!blob){info.textContent="No hay sonido para escuchar.";return}
+    try{const bf=await ac().decodeAudioData(await blob.arrayBuffer());const sr=ac().createBufferSource();sr.buffer=bf;sr.connect(ac().destination);sr.start()}
+    catch(e){prevUrl=URL.createObjectURL(blob);new Audio(prevUrl).play().catch(()=>{info.textContent="No se pudo reproducir ese audio."})}
+  };
+  const recBtn=$("#rec");let timer=null,chunks=[],stream=null;
+  recBtn.onclick=async()=>{
+    if(rec&&rec.state==="recording"){stopRec();return}
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      const types=["audio/webm;codecs=opus","audio/webm","audio/mp4"];
+      const mt=types.find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t));
+      rec=mt?new MediaRecorder(stream,{mimeType:mt}):new MediaRecorder(stream);
+      chunks=[];let t0=Date.now();
+      rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
+      rec.onstop=()=>{
+        clearInterval(timer);stream.getTracks().forEach(t=>t.stop());
+        recBtn.classList.remove("recording");recBtn.textContent="🎙️ Grabar";
+        if(chunks.length)setBlob(new Blob(chunks,{type:rec.mimeType||"audio/webm"}));
+      };
+      rec.start();recBtn.classList.add("recording");
+      timer=setInterval(()=>{
+        const s=Math.floor((Date.now()-t0)/1000);
+        recBtn.textContent="⏹️ Parar ("+s+" s)";
+        if(s>=30)stopRec();
+      },250);
+      recBtn.textContent="⏹️ Parar (0 s)";
+    }catch(e){info.textContent="No se pudo usar el micrófono. Revisá el permiso en el navegador."}
+  };
+  const close=()=>{stopRec();if(prevUrl)URL.revokeObjectURL(prevUrl);hideModal()};
+  $("#bCancel").onclick=close;
+  $("#bClear").onclick=async()=>{
+    if(!await askConfirm("¿Vaciar este botón (imagen, emoji y sonido)?","Vaciar"))return;
+    const b=cfg.screens[pi].buttons[bi];dropAudio(b.audio);
+    cfg.screens[pi].buttons[bi]=newButton(bi);await save();close();render();
+  };
+  $("#bSave").onclick=async()=>{
+    stopRec();
+    const b=cfg.screens[pi].buttons[bi];
+    b.emoji=d.emoji;b.img=d.img;b.color=d.color;b.synth=d.synth;
+    if(d.newBlob){
+      const id=uid();await dbSet("audio",id,d.newBlob);
+      dropAudio(b.audio);b.audio=id;
+    }else if(d.removeAudio){dropAudio(b.audio);b.audio=""}
+    await save();close();render();
+  };
+}
+
+/* ---------- Importación (respaldo e inicio.json) ---------- */
+async function importData(data,replace){
+  if(!data||!data.cfg||!Array.isArray(data.cfg.screens))throw new Error("bad");
+  if(replace)cfg.screens.forEach(s=>s.buttons.forEach(b=>dropAudio(b.audio)));
+  const map={};
+  for(const id in (data.audio||{})){
+    const bl=await (await fetch(data.audio[id])).blob();
+    map[id]=uid();await dbSet("audio",map[id],bl);
+  }
+  const inc=migrate(data.cfg);
+  inc.screens.forEach(sc=>sc.buttons.forEach(b=>{b.audio=b.audio?(map[b.audio]||""):""}));
+  if(replace)cfg=inc;else cfg.screens.push(...inc.screens);
+  await save();
+}
+async function loadInicio(replace){
+  const r=await fetch("inicio.json",{cache:"no-store"});
+  if(!r.ok)throw new Error("sin inicio.json");
+  await importData(await r.json(),replace);
+}
+
+/* ---------- Respaldo ---------- */
+const blobToDataURL=b=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(b)});
+document.getElementById("tBk").onclick=()=>{
+  showModal(`<h3>Respaldo</h3>
+    <p class="small">Guarda todas las pantallas, imágenes y sonidos en un archivo. Sirve para pasar todo a otro celular o recuperarlo si se borran los datos del navegador.</p>
+    <div class="row"><button class="btn ok" id="bExp">⬇️ Exportar</button><button class="btn" id="bImp">⬆️ Importar</button></div>
+    <div class="row"><button class="btn" id="bIni">🎁 Sumar pantallas iniciales</button></div>
+    <input type="file" id="fImp" accept=".json,application/json">
+    <div class="small" id="bkInfo"></div>
+    <div class="row"><button class="btn" id="bClose">Cerrar</button></div>`);
+  const info=$("#bkInfo");
+  $("#bClose").onclick=hideModal;
+  $("#bExp").onclick=async()=>{
+    info.textContent="Preparando…";
+    try{
+      const audio={};
+      for(const s of cfg.screens)for(const b of s.buttons)if(b.audio&&!audio[b.audio]){
+        const bl=await dbGet("audio",b.audio);if(bl)audio[b.audio]=await blobToDataURL(bl);
+      }
+      const out=new Blob([JSON.stringify({v:2,cfg,audio})],{type:"application/json"});
+      const a=document.createElement("a");a.href=URL.createObjectURL(out);
+      a.download="burbujas-respaldo-"+new Date().toISOString().slice(0,10)+".json";
+      document.body.appendChild(a);a.click();a.remove();
+      info.textContent="Listo: se descargó el archivo.";
+    }catch(e){info.textContent="No se pudo exportar."}
+  };
+  $("#bImp").onclick=()=>$("#fImp").click();
+  $("#bIni").onclick=async()=>{
+    info.textContent="Buscando…";
+    try{await loadInicio(false);hideModal();render(cfg.screens.length-1)}
+    catch(e){info.textContent="No hay pantallas iniciales disponibles en este sitio."}
+  };
+  $("#fImp").onchange=async e=>{
+    const f=e.target.files[0];if(!f)return;
+    if(!await askConfirm("Esto reemplaza todo lo que hay ahora en la app. ¿Seguir?","Reemplazar"))return;
+    try{
+      await importData(JSON.parse(await f.text()),true);hideModal();render(0);
+    }catch(x){info.textContent="El archivo no es un respaldo válido."}
+  };
+};
+
+/* ---------- Inicio ---------- */
+(async()=>{
+  const saved=await dbGet("kv","cfg");
+  if(saved&&Array.isArray(saved.screens)&&saved.screens.length){cfg=migrate(saved);save()}
+  else{try{await loadInicio(true)}catch(e){}}
+  render(0);
+  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+})();
 </script>
 </body>
 </html>
