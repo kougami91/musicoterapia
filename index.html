@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Burbujas</title>
+<style>
+:root{--bg1:#bfe9ff;--bg2:#ffe3f1;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg1:#1d3b5c;--bg2:#4a2a4a}}
+html,body{height:100%;margin:0}
+body{background:linear-gradient(160deg,var(--bg1),var(--bg2));font-family:"Trebuchet MS",system-ui,sans-serif;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+#grid{height:100%;display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(3,1fr);gap:14px;padding:14px;box-sizing:border-box}
+button{border:none;border-radius:32px;font-size:min(22vw,110px);cursor:pointer;box-shadow:0 8px 0 rgba(0,0,0,.18),inset 0 6px 14px rgba(255,255,255,.55);transition:transform .08s;-webkit-tap-highlight-color:transparent}
+button:active,button.pop{transform:scale(.88) translateY(6px);box-shadow:0 2px 0 rgba(0,0,0,.18)}
+.fx{position:fixed;pointer-events:none;font-size:40px;animation:up 1s ease-out forwards}
+@keyframes up{to{transform:translateY(-160px) scale(1.6);opacity:0}}
+</style>
+</head>
+<body>
+<div id="grid"></div>
+<script>
+let ctx;
+function ac(){if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==="suspended")ctx.resume();return ctx}
+function tone(f0,f1,dur,type="sine",vol=.4,delay=0){
+  const c=ac(),t=c.currentTime+delay,o=c.createOscillator(),g=c.createGain();
+  o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+dur);
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);
+  o.connect(g).connect(c.destination);o.start(t);o.stop(t+dur);
+}
+function noise(dur,vol=.3,freq=1200){
+  const c=ac(),n=c.sampleRate*dur,b=c.createBuffer(1,n,c.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);
+  const s=c.createBufferSource(),g=c.createGain(),f=c.createBiquadFilter();
+  s.buffer=b;f.type="bandpass";f.frequency.value=freq;g.gain.value=vol;
+  s.connect(f).connect(g).connect(c.destination);s.start();
+}
+const items=[
+ {e:"🫧",c:"#9fe0ff",s:()=>tone(400+Math.random()*300,1400,.18,"sine",.45)},
+ {e:"🔵",c:"#7fb4ff",s:()=>{tone(220+Math.random()*80,900,.3,"sine",.45);tone(500,1600,.12,"sine",.25,.08)}},
+ {e:"🔔",c:"#ffe27a",s:()=>{tone(880,880,1.2,"sine",.35);tone(1760,1760,.8,"sine",.15)}},
+ {e:"🥁",c:"#ffb38a",s:()=>{tone(180,50,.25,"sine",.7);noise(.08,.15,2000)}},
+ {e:"⭐",c:"#d6b3ff",s:()=>[523,659,784,1047].forEach((f,i)=>tone(f,f,.35,"triangle",.3,i*.09))},
+ {e:"🐱",c:"#ffb3d1",s:()=>{tone(700,1000,.15,"triangle",.35);tone(1000,500,.35,"triangle",.35,.15)}}
+];
+const grid=document.getElementById("grid");
+items.forEach(it=>{
+  const b=document.createElement("button");
+  b.textContent=it.e;b.style.background=it.c;
+  const go=ev=>{
+    ev.preventDefault();it.s();
+    b.classList.add("pop");setTimeout(()=>b.classList.remove("pop"),120);
+    const r=b.getBoundingClientRect(),x=document.createElement("div");
+    x.className="fx";x.textContent=it.e;
+    x.style.left=(r.left+Math.random()*r.width*.8)+"px";x.style.top=(r.top+r.height/2)+"px";
+    document.body.appendChild(x);setTimeout(()=>x.remove(),1000);
+  };
+  b.addEventListener("pointerdown",go);
+  grid.appendChild(b);
+});
+</script>
+</body>
+</html>
